@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>せーの指名</title>
+<style>
+/* レイアウト: 1カラムの名札カード。スマホ幅を基準に、ホストの発表画面だけ大きな文字で表示する */
+:root {
+  --bg: #F3F4F9;
+  --surface: #FFFFFF;
+  --ink: #1B2133;
+  --muted: #5B6479;
+  --line: #D9DDE8;
+  --accent: #363B93;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E6E8F8;
+  --male: #1B6985;
+  --male-soft: #E1F0F5;
+  --female: #AB3A59;
+  --female-soft: #FAE6ED;
+  --ok: #1D7A4D;
+  --ok-soft: #E1F3E9;
+  --danger: #B3261E;
+  --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Noto Sans JP", "Meiryo", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11141E; --surface: #1A1F2F; --ink: #E8EBF4; --muted: #9AA3BA; --line: #2B3248;
+    --accent: #9CA1F2; --accent-ink: #11141E; --accent-soft: #272C52;
+    --male: #6EC4DF; --male-soft: #16313B; --female: #F28CA9; --female-soft: #3B1F2A;
+    --ok: #62D39B; --ok-soft: #173326; --danger: #FF8F86;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11141E; --surface: #1A1F2F; --ink: #E8EBF4; --muted: #9AA3BA; --line: #2B3248;
+  --accent: #9CA1F2; --accent-ink: #11141E; --accent-soft: #272C52;
+  --male: #6EC4DF; --male-soft: #16313B; --female: #F28CA9; --female-soft: #3B1F2A;
+  --ok: #62D39B; --ok-soft: #173326; --danger: #FF8F86;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font);
+  font-size: 16px; line-height: 1.65;
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(32px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: 1.6rem; letter-spacing: .04em; text-wrap: balance; }
+h2 { font-size: 1.15rem; text-wrap: balance; }
+h3 { font-size: 1rem; }
+.muted { color: var(--muted); }
+.small { font-size: .875rem; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+label { font-size: .875rem; font-weight: 600; display: block; margin-bottom: 4px; }
+input[type=text], input[type=password], input[type=tel] {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; min-height: 44px;
+}
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button, .btn {
+  font: inherit; font-weight: 600; min-height: 44px; padding: 8px 18px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+}
+button.ghost { background: transparent; color: var(--accent); }
+button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.wide { width: 100%; }
+button.big { min-height: 54px; font-size: 1.1rem; }
+
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { margin: 0; text-align: center; padding: 10px; border: 2px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 1rem; }
+.seg input:checked + label.m { border-color: var(--male); background: var(--male-soft); color: var(--male); }
+.seg input:checked + label.f { border-color: var(--female); background: var(--female-soft); color: var(--female); }
+.seg input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.roomno { font-size: 2.4rem; font-weight: 800; letter-spacing: .12em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.phase { font-size: .8rem; font-weight: 700; letter-spacing: .06em; padding: 2px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+/* 名札 */
+.tag { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-left-width: 6px; border-radius: 6px; padding: 6px 12px; background: var(--surface); font-weight: 600; max-width: 100%; overflow-wrap: anywhere; }
+.tag.m { border-left-color: var(--male); }
+.tag.f { border-left-color: var(--female); }
+.tag.n { border-left-color: var(--accent); }
+.seg input:checked + label.a { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.seg label small { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; }
+.tag small { font-weight: 500; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: .85rem; padding: 2px 10px; border-radius: 99px; border: 1px solid var(--line); }
+.chip.done { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+.chip.m { border-left: 4px solid var(--male); }
+.chip.f { border-left: 4px solid var(--female); }
+.chip.n { border-left: 4px solid var(--accent); }
+
+/* 選択リスト */
+.cands { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.cand { text-align: left; background: var(--surface); color: var(--ink); border: 2px solid var(--line); min-height: 52px; overflow-wrap: anywhere; }
+.cand.on { border-color: var(--accent); background: var(--accent-soft); }
+.cand.mine { border-color: var(--ok); }
+.cands.m .cand { border-left: 6px solid var(--male); }
+.cands.f .cand { border-left: 6px solid var(--female); }
+
+/* 発表 */
+.stage { background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 24px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; min-height: 240px; justify-content: center; }
+.stage .big-label { font-size: .95rem; font-weight: 700; letter-spacing: .1em; color: var(--accent); }
+.stage .names { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.stage .tag { font-size: 1.5rem; padding: 10px 18px; }
+.stage .join { font-weight: 800; color: var(--ok); letter-spacing: .08em; }
+.stage .note { font-size: 1.05rem; }
+.stage .note b { font-size: 1.3em; font-variant-numeric: tabular-nums; }
+.stage.match { border-color: var(--ok); }
+.stage.match .big-label { color: var(--ok); }
+.excl { display: inline-block; background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); border-radius: 6px; padding: 2px 12px; font-weight: 700; }
+.logline { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); }
+.couple { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.couple .rd { font-size: .8rem; color: var(--muted); min-width: 3.5em; }
+.memo h3 { margin-top: 4px; font-size: .95rem; color: var(--accent); }
+.memo-item { border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.memo-item b { font-variant-numeric: tabular-nums; }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 8px; max-width: calc(100vw - 32px); z-index: 20; }
+details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+code.k { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.1rem; letter-spacing: .1em; background: var(--bg); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); }
+.err { color: var(--danger); font-size: .9rem; }
+@media (prefers-reduced-motion: no-preference) { .stage { animation: pop .25s ease-out; } @keyframes pop { from { transform: scale(.97); opacity: .4; } to { transform: none; opacity: 1; } } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+'use strict';
+const app = document.getElementById('app');
+// 内部の 'male' はチーム1、'female' はチーム2を指す。表示名は部屋ごとに部屋主が決める。
+// シングルモードでは全員が 'single' で、チームの表示は出さない。
+let curMode = 'double';
+let curInfo = { mode: 'double', teams: ['男性', '女性'] };
+const sideLabel = (room, g) => (room.mode === 'single' ? '' : (room.teams || ['男性', '女性'])[g === 'male' ? 0 : 1]);
+const gcls = (g) => (curMode === 'single' ? 'n' : g === 'male' ? 'm' : 'f');
+const modeName = (m) => (m === 'single' ? 'シングルモード' : 'ダブルモード');
+function countsText(room) {
+  if (room.mode === 'single') return `参加者 ${room.counts.total}人`;
+  return `${room.teams[0]} ${room.counts.male}人 / ${room.teams[1]} ${room.counts.female}人`;
+}
+const PHASE = { lobby: '受付中', picking: '指名中', reveal: '発表中', between: '次の周へ', done: '終了' };
+
+// ---------- 小道具 ----------
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const mem = {};
+const store = {
+  get(id) { if (mem[id]) return mem[id]; try { const v = JSON.parse(localStorage.getItem('sn:' + id) || 'null'); if (v) mem[id] = v; return v; } catch (e) { return null; } },
+  set(id, v) { mem[id] = v; try { localStorage.setItem('sn:' + id, JSON.stringify(v)); } catch (e) {} },
+  del(id) { delete mem[id]; try { localStorage.removeItem('sn:' + id); } catch (e) {} },
+};
+async function api(method, path, body, token) {
+  const r = await fetch('/api' + path, {
+    method,
+    headers: Object.assign({ 'content-type': 'application/json' }, token ? { 'x-token': token } : {}),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) { const err = new Error((j && j.error) || '通信に失敗しました'); err.status = r.status; throw err; }
+  return j;
+}
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
+}
+const tag = (name, gender, extra) => `<span class="tag ${gcls(gender)}">${esc(name)}${extra ? ` <small>${esc(extra)}</small>` : ''}</span>`;
+function copyText(text, okMsg) {
+  const fallback = () => toast('コピーできませんでした。手動で選択してください');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast(okMsg), fallback);
+  else fallback();
+}
+
+// ---------- ルーティングとポーリング ----------
+let poll = null, curRoom = null, lastJson = '';
+let ui = { sel: null, selRound: -1, revealIdx: {}, confirmClose: false, confirmDelete: false, showPicks: false };
+
+function stopPoll() { if (poll) clearInterval(poll); poll = null; }
+function route() {
+  stopPoll(); lastJson = ''; curRoom = null;
+  const m = location.hash.match(/^#\/r\/(\d{4})$/);
+  if (m) openRoom(m[1]); else openHome();
+}
+window.addEventListener('hashchange', route);
+
+// ---------- ホーム ----------
+function openHome() {
+  app.innerHTML = `
+    <header class="stack"><h1>せーの指名</h1><p class="muted">部屋番号とパスワードで入る、指名マッチングの部屋です。</p></header>
+    <section class="panel">
+      <h2>部屋に入る</h2>
+      <form data-form="goto" class="stack">
+        <div><label for="gotoNo">部屋番号(4桁)</label><input id="gotoNo" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" required></div>
+        <button class="wide">次へ</button>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>部屋を作る(部屋主)</h2>
+      <form data-form="create" class="stack">
+        <div><label for="cName">部屋の名前</label><input id="cName" type="text" maxlength="40" placeholder="例: 11/20 みんなの会" required></div>
+        <div><label for="cPw">パスワード(参加者に口頭などで伝えます)</label><input id="cPw" type="text" maxlength="64" autocomplete="off" required></div>
+        <div><label>モード</label><div class="seg">
+          <input type="radio" name="mode" id="mD" value="double" checked><label class="a" for="mD">ダブルモード<small>2チームに分かれる</small></label>
+          <input type="radio" name="mode" id="mS" value="single"><label class="a" for="mS">シングルモード<small>全員が1つのグループ</small></label></div></div>
+        <div id="teamBox" class="stack">
+          <div class="row" style="flex-wrap:nowrap"><div style="flex:1;min-width:0"><label for="t1">チーム1の名前</label><input id="t1" type="text" maxlength="10" value="男性"></div>
+            <div style="flex:1;min-width:0"><label for="t2">チーム2の名前</label><input id="t2" type="text" maxlength="10" value="女性"></div></div>
+          <p class="small muted">参加者は自分が入るチームを選び、相手チームの名簿から1人を指名します。「男性/女性」のほか「A/B」「先輩/後輩」など自由に付けられます。</p></div>
+        <p class="small muted" id="singleNote" hidden>チームには分かれず、参加者全員の名簿から、自分以外の1人を指名します。コミュニティ内でペアを決めたいときなどに使えます。</p>
+        <p class="err" id="cErr" hidden></p>
+        <button class="wide">部屋を作る</button>
+      </form>
+    </section>
+    <section class="panel"><h2>いまある部屋</h2><ul class="list" id="roomlist"><li class="muted small">読み込み中…</li></ul></section>`;
+  const load = async () => {
+    try {
+      const { rooms } = await api('GET', '/rooms');
+      const ul = document.getElementById('roomlist'); if (!ul) return;
+      ul.innerHTML = rooms.length ? rooms.map((r) => `<li class="row between"><div><b>${esc(r.id)}</b>　${esc(r.name)}<div class="small muted">${modeName(r.mode)}・${PHASE[r.phase]}・${r.count}人</div></div><a href="#/r/${r.id}"><button class="ghost" tabindex="-1">開く</button></a></li>`).join('')
+        : '<li class="muted small">まだ部屋がありません。</li>';
+    } catch (e) {}
+  };
+  load();
+  poll = setInterval(load, 5000);
+}
+
+// ---------- 部屋(入口) ----------
+async function openRoom(id) {
+  curRoom = id;
+  const s = store.get(id);
+  if (!s) return renderJoin(id);
+  await tick();
+  poll = setInterval(tick, 2500);
+}
+async function tick() {
+  const id = curRoom, s = id && store.get(id);
+  if (!s) return;
+  try {
+    const st = await api('GET', `/rooms/${id}/state`, null, s.token);
+    if (curRoom !== id) return;
+    const j = JSON.stringify(st);
+    if (j === lastJson) return;
+    lastJson = j;
+    render(st);
+  } catch (e) {
+    if (e.status === 401 || e.status === 404) {
+      stopPoll(); store.del(id);
+      if (e.status === 404) { toast('この部屋は削除されました'); location.hash = '#/'; } else { toast(e.message); renderJoin(id); }
+    }
+  }
+}
+function refresh() { lastJson = ''; return tick(); }
+
+async function renderJoin(id) {
+  let pub;
+  try { pub = await api('GET', `/rooms/${id}/public`); }
+  catch (e) { toast('部屋が見つかりません'); location.hash = '#/'; return; }
+  const single = pub.mode === 'single';
+  app.innerHTML = `
+    <p><a href="#/">← トップへ</a></p>
+    <header class="stack"><div class="row"><span class="phase">${PHASE[pub.phase]}</span><span class="phase">${modeName(pub.mode)}</span><span class="muted small">${pub.count}人が参加中</span></div>
+      <div class="roomno">${esc(pub.id)}</div><h1>${esc(pub.name)}</h1></header>
+    <section class="panel">
+      <h2>参加する</h2>
+      <form data-form="join" class="stack">
+        <div><label for="jPw">パスワード</label><input id="jPw" type="password" autocomplete="off" required></div>
+        <div><label for="jName">お名前</label><input id="jName" type="text" maxlength="20" autocomplete="off" required></div>
+        ${single ? '' : `<div><label>自分が入るチーム(初めて入るときだけ選びます)</label><div class="seg"><input type="radio" name="gender" id="gM" value="male"><label class="m" for="gM">${esc(pub.teams[0])}</label><input type="radio" name="gender" id="gF" value="female"><label class="f" for="gF">${esc(pub.teams[1])}</label></div></div>`}
+        <p class="err" id="jErr" hidden></p>
+        <button class="wide">入室する</button>
+        <p class="small muted">ページを閉じてしまった方は、パスワードと登録した名前だけで入り直せます。${single ? '' : 'チームは選ばなくて大丈夫です。'}閉じる前の画面に戻ります。</p>
+      </form>
+    </section>
+    <details class="panel"><summary>部屋主の方はこちら</summary>
+      <form data-form="hostlogin" class="stack"><div><label for="hKey">復帰コード</label><input id="hKey" type="text" autocomplete="off" required></div>
+        <p class="err" id="hErr" hidden></p><button class="ghost wide">部屋主として戻る</button></form>
+    </details>`;
+}
+
+// ---------- 描画 ----------
+function render(st) {
+  curMode = st.room.mode; curInfo = st.room;
+  app.innerHTML = st.role === 'host' ? hostHtml(st) : memberHtml(st);
+}
+
+function headHtml(room) {
+  return `<p><a href="#/">← トップへ</a></p>
+    <header class="stack"><div class="row"><span class="phase">${PHASE[room.phase]}${room.round ? `・第${room.round}周` : ''}</span><span class="phase">${modeName(room.mode)}${room.mode === 'double' ? `(${esc(room.teams[0])}/${esc(room.teams[1])})` : ''}</span></div>
+    <div class="roomno">${esc(room.id)}</div><h1>${esc(room.name)}</h1></header>`;
+}
+function couplesPanel(couples) {
+  if (!couples.length) return '';
+  return `<section class="panel"><h2>成立したカップル(${couples.length}組)</h2><div class="stack">${couples.map((c) =>
+    `<div class="couple"><span class="rd">第${c.round}周</span>${tag(c.male, 'male')}<span class="muted">×</span>${tag(c.female, 'female')}</div>`).join('')}</div></section>`;
+}
+
+// 参加者
+function memberHtml(st) {
+  const { room, me } = st;
+  let body = '';
+  if (room.phase === 'lobby') {
+    body = `<section class="panel"><h2>開始までお待ちください</h2><p>部屋主が始めると、ここに相手の名簿が表示されます。</p>
+      <p class="muted small">いまの参加状況: ${esc(countsText(room))}</p></section>`;
+  } else if (room.phase === 'picking') {
+    if (me.partner) {
+      body = `<section class="panel"><h2>カップル成立済みです</h2><div class="couple">${tag(me.name, me.gender)}<span class="muted">×</span>${tag(me.partner, me.gender === 'male' ? 'female' : 'male')}</div><p class="muted">ほかの人の指名が終わるまでお待ちください。</p></section>`;
+    } else {
+      if (ui.selRound !== room.round) { ui.sel = null; ui.selRound = room.round; }
+      const cur = ui.sel || st.myPick;
+      const other = me.gender === 'male' ? 'female' : 'male';
+      const list = st.candidates || [];
+      const myPickName = (list.find((c) => c.id === st.myPick) || {}).name;
+      body = `<section class="panel"><h2>第${room.round}周: 気になる${room.mode === 'single' ? '人' : esc(sideLabel(room, other))}を1人選んでください</h2>
+        ${list.length ? `<div class="cands ${gcls(other)}">${list.map((c) => `<button type="button" class="cand${c.id === cur ? ' on' : ''}${c.id === st.myPick ? ' mine' : ''}" data-act="sel" data-id="${esc(c.id)}">${esc(c.name)}</button>`).join('')}</div>
+        <button class="wide big" data-act="pick" ${cur && cur !== st.myPick ? '' : 'disabled'}>この人に決める</button>
+        <p class="small ${st.myPick ? '' : 'muted'}">${st.myPick ? `決定済み: ${esc(myPickName || '')}さん(締め切りまで変更できます)` : 'まだ決定していません'}</p>` : '<p class="muted">選べる相手がいません。</p>'}</section>`;
+    }
+  } else if (room.phase === 'reveal') {
+    body = `<section class="panel"><h2>部屋主が結果を発表中です</h2><p class="muted">発表が終わると、あなたの結果がここに表示されます。</p></section>`;
+  } else {
+    const lastLine = me.partner
+      ? (me.matchedThisRound ? `<h2>カップル成立です!</h2>` : `<h2>カップル成立済みです</h2>`)
+      : `<h2>今回はマッチなしでした</h2>`;
+    const partnerBlock = me.partner
+      ? `<div class="couple">${tag(me.name, me.gender)}<span class="muted">×</span>${tag(me.partner, me.gender === 'male' ? 'female' : 'male')}</div>`
+      : (room.phase === 'between' ? '<p class="muted">次の周で、残っている人からもう一度選べます。</p>' : '<p class="muted">ご参加ありがとうございました。</p>');
+    body = `<section class="panel">${lastLine}${partnerBlock}</section>${couplesPanel(st.couples)}
+      ${room.phase === 'between' ? '<p class="muted small">部屋主が次の周を始めるまでお待ちください。</p>' : ''}`;
+  }
+  return `${headHtml(room)}<div class="row">${tag(me.name, me.gender, sideLabel(room, me.gender))}</div>${body}
+    <p class="small"><button class="ghost" data-act="leave">この端末から退室</button></p>`;
+}
+
+// 部屋主
+function hostHtml(st) {
+  const { room } = st;
+  const s = store.get(room.id) || {};
+  const link = location.origin + location.pathname + '#/r/' + room.id;
+  const left = st.members.filter((m) => !m.partner);
+  const leftText = room.mode === 'single'
+    ? `${left.length}人`
+    : `${esc(room.teams[0])}${left.filter((m) => m.gender === 'male').length}人 / ${esc(room.teams[1])}${left.filter((m) => m.gender === 'female').length}人`;
+  const uneven = room.mode === 'single' ? room.counts.total % 2 === 1 : room.counts.male !== room.counts.female;
+  let body = '';
+
+  if (room.phase === 'lobby') {
+    body = `<section class="panel"><h2>参加者を待っています</h2>
+      <p class="small muted">参加者には「部屋番号 ${esc(room.id)}」と、決めたパスワードを伝えてください。</p>
+      <div class="row"><button class="ghost" data-act="copylink">参加用リンクをコピー</button></div>
+      ${memberListHtml(st.members, true, room)}
+      <p>${esc(countsText(room))}${uneven ? ` <span class="muted small">(${room.mode === 'single' ? '人数が奇数だと、最後に1人余ります' : '人数が違うと、最後に余る人が出ます'})</span>` : ''}</p>
+      <button class="wide big" data-act="start" ${st.canStart ? '' : 'disabled'}>第1周を始める</button></section>`;
+  } else if (room.phase === 'picking') {
+    const act = st.members.filter((m) => m.picked !== null);
+    const done = act.filter((m) => m.picked).length;
+    body = `<section class="panel"><h2>第${room.round}周 指名中 <span class="muted small">${done} / ${act.length}人 選択済み</span></h2>
+      <div class="chips">${act.map((m) => `<span class="chip ${gcls(m.gender)}${m.picked ? ' done' : ''}">${esc(m.name)}${m.picked ? ' ✓' : ''}</span>`).join('')}</div>
+      ${ui.confirmClose
+        ? `<p class="err">未選択の人が${act.length - done}人います。締め切ると、その人は誰も指名しなかった扱いになります。</p>
+           <div class="row"><button class="danger" data-act="close">締め切って結果を見る</button><button class="ghost" data-act="cancelclose">戻る</button></div>`
+        : `<button class="wide big" data-act="${done === act.length ? 'close' : 'askclose'}">締め切って結果を見る</button>`}</section>`;
+  } else if (room.phase === 'reveal' && st.result) {
+    body = revealHtml(st);
+  } else if (room.phase === 'between') {
+    body = `${couplesPanel(st.couples)}
+      <section class="panel"><h2>第${room.round}周が終わりました</h2>
+        <p>残り: ${leftText}</p>
+        <button class="wide big" data-act="start">第${room.round + 1}周を始める</button>
+        <button class="ghost" data-act="end">ここで終了する</button></section>${memoHtml(st.result, true)}`;
+  } else if (room.phase === 'done') {
+    body = `${couplesPanel(st.couples)}<section class="panel"><h2>終了しました</h2>
+      ${left.length ? `<p class="muted">${room.mode === 'single' ? 'ペアにならなかった方' : 'カップルにならなかった方'}</p><div class="chips">${left.map((m) => `<span class="chip ${gcls(m.gender)}">${esc(m.name)}</span>`).join('')}</div>` : '<p>全員がペアになりました。</p>'}</section>${memoHtml(st.result, true)}`;
+  }
+
+  const footer = `<details class="panel"><summary>部屋主の設定</summary><div class="stack">
+      <p class="small">復帰コード(別の端末や、ブラウザを閉じたあとに部屋主へ戻るために使います)</p>
+      <div class="row">${s.hostKey ? `<code class="k">${esc(s.hostKey)}</code>` : '<span class="muted small">この端末には保存されていません</span>'}</div>
+      <p class="small"><button class="ghost" data-act="copylink">参加用リンクをコピー</button></p>
+      ${ui.confirmDelete ? `<p class="err">部屋と結果をすべて削除します。</p><div class="row"><button class="danger" data-act="delete">削除する</button><button class="ghost" data-act="canceldelete">やめる</button></div>`
+        : `<button class="danger" data-act="askdelete">この部屋を削除</button>`}</div></details>`;
+  return `${headHtml(room)}${body}${footer}`;
+}
+
+function memberListHtml(members, removable, room) {
+  if (!members.length) return '<p class="muted">まだ誰も参加していません。</p>';
+  return `<ul class="list">${members.map((m) => `<li class="row between">${tag(m.name, m.gender, sideLabel(room, m.gender))}${removable ? `<button class="ghost" data-act="remove" data-id="${esc(m.id)}">削除</button>` : ''}</li>`).join('')}</ul>`;
+}
+
+// 発表(部屋主の端末で1件ずつ表示)
+function buildSteps(r) {
+  const steps = r.matches.map((m) => ({ type: 'match', m }));
+  const um = r.unmatched.slice().sort((a, b) => b.received - a.received);
+  um.forEach((u) => steps.push({ type: 'miss', u }));
+  return steps;
+}
+function stepHtml(s) {
+  if (s.type === 'match') {
+    const { m } = s;
+    const both0 = m.maleOthers === 0 && m.femaleOthers === 0;
+    return `<div class="stage match"><div class="big-label">マッチング成立</div>
+      <div class="names">${tag(m.male.name, 'male')}<span class="join">×</span>${tag(m.female.name, 'female')}</div>
+      ${both0 ? '<span class="excl">お互い以外からの指名はありませんでした</span>'
+        : `<p class="note">${esc(m.male.name)}さんには 他に<b>${m.maleOthers}</b>人、${esc(m.female.name)}さんには 他に<b>${m.femaleOthers}</b>人から指名がありました</p>`}</div>`;
+  }
+  const u = s.u;
+  const who = curInfo.mode === 'single' ? '' : `の${esc(sideLabel(curInfo, u.gender === 'male' ? 'female' : 'male'))}`;
+  return `<div class="stage"><div class="big-label">マッチなし</div>
+    <div class="names">${tag(u.name, u.gender)}</div>
+    <p class="note">${u.received > 0 ? `${u.received}人${who}から指名を受けています` : `指名した相手との成立はなく、指名も届いていません`}</p>
+    ${u.picked ? '' : '<p class="muted small">この周は誰も選ばなかった方です</p>'}</div>`;
+}
+function stepLine(s) {
+  if (s.type === 'match') return `<div class="logline">${tag(s.m.male.name, 'male')}<span class="muted">×</span>${tag(s.m.female.name, 'female')}<span class="small" style="color:var(--ok)">成立</span></div>`;
+  return `<div class="logline">${tag(s.u.name, s.u.gender)}<span class="small muted">マッチなし・${s.u.received}人から指名</span></div>`;
+}
+function revealHtml(st) {
+  const r = st.result, steps = buildSteps(r), n = steps.length;
+  const idx = Math.min(ui.revealIdx[r.round] || 0, n);
+  const head = `<section class="panel"><h2>第${r.round}周 結果発表 <span class="muted small">${r.matches.length}組が成立</span></h2></section>`;
+  if (n === 0) return head + `<section class="panel"><p>この周の対象者がいません。</p><button class="wide big" data-act="finish">第${r.round}周を終了する</button></section>`;
+  const current = idx > 0 ? stepHtml(steps[idx - 1]) : `<div class="stage"><div class="big-label">準備OK</div><p class="note">「発表する」を押すと1件ずつ表示されます(全${n}件)</p></div>`;
+  const prev = steps.slice(0, Math.max(idx - 1, 0)).reverse().map(stepLine).join('');
+  const more = idx < n;
+  return `${head}${current}
+    <div class="row">${more ? `<button class="big" style="flex:1" data-act="next">${idx === 0 ? '発表する' : `次の発表へ(${idx}/${n})`}</button><button class="ghost" data-act="all">最後まで表示</button>`
+      : `<button class="big wide" data-act="finish">第${r.round}周を終了して参加者にも結果を表示</button>`}</div>
+    ${memoHtml(r, false)}
+    ${prev ? `<section class="panel"><h3>ここまでの発表</h3>${prev}</section>` : ''}`;
+}
+// 部屋主メモ: その周の詳細を、発表の途中でも常に確認できる(部屋主の画面だけに表示)
+function memoHtml(r, asDetails) {
+  if (!r) return '';
+  const matchRows = r.matches.map((m) => {
+    const both0 = m.maleOthers === 0 && m.femaleOthers === 0;
+    const hist = (m.history || []).map((h) => `第${h.round}周 ${esc(h.from)}さん→${esc(h.to)}さん`).join('、');
+    return `<li class="memo-item"><div class="couple">${tag(m.male.name, 'male')}<span class="muted">×</span>${tag(m.female.name, 'female')}${both0 ? '<span class="excl">お互い以外の指名なし</span>' : ''}</div>
+      <div class="small">${esc(m.male.name)}さんは他に<b>${m.maleOthers}</b>人、${esc(m.female.name)}さんは他に<b>${m.femaleOthers}</b>人から指名されていました</div>
+      ${hist ? `<div class="small muted">過去の周の指名: ${hist}</div>` : ''}</li>`;
+  }).join('');
+  const missRows = r.unmatched.slice().sort((a, b) => b.received - a.received).map((u) =>
+    `<li class="memo-item"><div class="couple">${tag(u.name, u.gender)}<span class="small"><b>${u.received}</b>人から指名${u.picked ? '' : '(本人は未選択)'}</span></div></li>`).join('');
+  const crossRows = (r.crossings || []).map((c) =>
+    `<li class="memo-item small">${esc(c.before)}さんは第${c.rounds.join('・')}周に${esc(c.now)}さんを指名していました。今回は${esc(c.now)}さんから${esc(c.before)}さんが指名されています。
+      <span class="muted">(${esc(c.before)}さんの今回の指名: ${c.beforeNow ? esc(c.beforeNow) + 'さん' : 'なし'})</span></li>`).join('');
+  const inner = `
+    <p class="small muted">この内容は部屋主の画面だけに表示されます。参加者には見せないでください。</p>
+    <h3>成立したカップル(${r.matches.length}組)</h3>
+    <ul class="list">${matchRows || '<li class="muted small">この周に成立したカップルはいません</li>'}</ul>
+    <h3>マッチなし(${r.unmatched.length}人)</h3>
+    <ul class="list">${missRows || '<li class="muted small">いません</li>'}</ul>
+    <h3>すれ違い(以前に指名した人から、今回は逆に指名されている)</h3>
+    <ul class="list">${crossRows || '<li class="muted small">この周のすれ違いはありません</li>'}</ul>
+    <details><summary>この周の指名の一覧(全員分)</summary>
+      <div class="stack small">${r.picks.length ? r.picks.map((p) => `<div>${esc(p.from)} → ${esc(p.to)}</div>`).join('') : '指名はありませんでした'}</div></details>`;
+  return asDetails
+    ? `<details class="panel memo"><summary>第${r.round}周の部屋主メモ</summary><div class="stack">${inner}</div></details>`
+    : `<section class="panel memo"><h2>第${r.round}周 部屋主メモ</h2>${inner}</section>`;
+}
+
+// ---------- イベント ----------
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest('form[data-form]'); if (!f) return;
+  e.preventDefault();
+  const kind = f.dataset.form, v = (id) => document.getElementById(id);
+  const showErr = (id, msg) => { const el = v(id); if (el) { el.textContent = msg; el.hidden = false; } };
+  try {
+    if (kind === 'goto') {
+      const no = v('gotoNo').value.trim();
+      if (!/^\d{4}$/.test(no)) return toast('部屋番号は4桁の数字です');
+      location.hash = '#/r/' + no;
+    } else if (kind === 'create') {
+      const mode = f.querySelector('input[name=mode]:checked').value;
+      const r = await api('POST', '/rooms', { name: v('cName').value, password: v('cPw').value, mode, teams: [v('t1').value, v('t2').value] });
+      store.set(r.id, { role: 'host', token: r.hostToken, hostKey: r.hostKey });
+      location.hash = '#/r/' + r.id;
+    } else if (kind === 'join') {
+      const g = f.querySelector('input[name=gender]:checked');
+      const r = await api('POST', `/rooms/${curRoom}/join`, { password: v('jPw').value, name: v('jName').value, gender: g ? g.value : null });
+      store.set(curRoom, { role: 'member', token: r.token });
+      if (r.rejoined) toast('おかえりなさい。前の画面に戻りました');
+      route();
+    } else if (kind === 'hostlogin') {
+      const r = await api('POST', `/rooms/${curRoom}/host-login`, { hostKey: v('hKey').value });
+      store.set(curRoom, { role: 'host', token: r.token, hostKey: v('hKey').value.trim().toUpperCase() });
+      route();
+    }
+  } catch (err) {
+    const target = { create: 'cErr', join: 'jErr', hostlogin: 'hErr' }[kind];
+    if (target) showErr(target, err.message); else toast(err.message);
+  }
+});
+
+// 部屋を作るフォーム: シングルモードではチーム名の入力を隠す
+document.addEventListener('change', (e) => {
+  if (!e.target || e.target.name !== 'mode') return;
+  const single = e.target.value === 'single';
+  const box = document.getElementById('teamBox'), note = document.getElementById('singleNote');
+  if (box) box.hidden = single;
+  if (note) note.hidden = !single;
+});
+
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const act = b.dataset.act, id = curRoom, s = id && store.get(id);
+  const post = async (path, body) => {
+    try { await api('POST', `/rooms/${id}${path}`, body, s && s.token); await refresh(); }
+    catch (err) { toast(err.message); }
+  };
+  if (act === 'sel') { ui.sel = b.dataset.id; lastJson = ''; return tick(); }
+  if (act === 'pick') { const t = ui.sel; ui.sel = null; return post('/pick', { targetId: t }); }
+  if (act === 'leave') { store.del(id); stopPoll(); renderJoin(id); return; }
+  if (act === 'copylink') return copyText(location.origin + location.pathname + '#/r/' + id, '参加用リンクをコピーしました');
+  if (act === 'start') { ui.confirmClose = false; return post('/host/start'); }
+  if (act === 'askclose') { ui.confirmClose = true; lastJson = ''; return tick(); }
+  if (act === 'cancelclose') { ui.confirmClose = false; lastJson = ''; return tick(); }
+  if (act === 'close') { ui.confirmClose = false; return post('/host/close'); }
+  if (act === 'finish') return post('/host/finish');
+  if (act === 'end') return post('/host/end');
+  if (act === 'remove') return post('/host/remove', { memberId: b.dataset.id });
+  if (act === 'askdelete') { ui.confirmDelete = true; lastJson = ''; return tick(); }
+  if (act === 'canceldelete') { ui.confirmDelete = false; lastJson = ''; return tick(); }
+  if (act === 'delete') { ui.confirmDelete = false; try { await api('POST', `/rooms/${id}/host/delete`, null, s.token); } catch (err) { return toast(err.message); } store.del(id); location.hash = '#/'; return; }
+  if (act === 'next' || act === 'all') {
+    // 発表の進行は部屋主の端末内だけで管理
+    try {
+      const st = JSON.parse(lastJson), n = buildSteps(st.result).length, r = st.result.round;
+      ui.revealIdx[r] = act === 'all' ? n : Math.min((ui.revealIdx[r] || 0) + 1, n);
+      render(st);
+    } catch (err) {}
+  }
+});
+
+route();
+</script>
+</body>
+</html>
